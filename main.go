@@ -15,7 +15,7 @@ import (
 
 //Db on hard---->slow
 //important: conn db --->close
-func pg_conn(lat, lng float64) string {
+func pg_conn(lat, lng float64) (res []string) {
 	//cache redis ---->ram
 	//TODO
 	//hard
@@ -27,43 +27,40 @@ func pg_conn(lat, lng float64) string {
 
 	query := `
 	SELECT
-	name
+	name,
+	ST_Distance(ST_Transform(way, 4326),ST_SetSRID(ST_MakePoint($1,$2), 4326) as distance
     --,osm_id, amenity,    
-	,ST_Distance(ST_Transform(way, 4326),ST_SetSRID(ST_MakePoint($1,$2)), 4326)) AS distance
 	FROM planet_osm_point
-	WHERE amenity = 'restaurant'
-    AND ST_DWithin(
-        ST_Transform(way, 4326),
-        ST_SetSRID(ST_MakePoint($1,$2), 4326),
-        1000
-    )
-	ORDER BY distance
+	where amenity = 'restaurant' AND 
+	ST_DWithin(
+		ST_Transform(way, 4326),
+		ST_SetSRID(ST_MakePoint($1,$2), 4326),
+		1000
+	)
+	ORDER BY  distance
+	)
 	limit 10;
 
 	`
-	var name string
-	var distance float64
-	//$1 long $2 lat
-	err := db.QueryRow(query, lng, lat).Scan(&name, &distance)
-	fmt.Println(name, distance)
-	return name
-	//if err != nil {
-	//	panic(err)
-	//
-	//}
-	//defer rows.Close()
-	//
-	//for rows.Next() {
-	//	var name string
-	//	var distance float64
-	//	err = rows.Scan(&name, &distance)
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//	fmt.Println(name, distance)
-	//	//add distance
-	//}
-	//
+	rows, err := db.Query(query, lng, lat)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Next()
+
+	for rows.Next() {
+		var name string
+		err = rows.Scan(&name)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println(name)
+	}
+	err = rows.Err()
+	if err != nil {
+		panic(err)
+	}
+	return "successful"
 
 }
 
