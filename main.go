@@ -1,10 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -14,23 +12,18 @@ import (
 )
 
 type Restaurant struct {
-	Name     string //`json:"name"`
-	distance string //`json:"distance"`
-	// Add more fields here as needed
+	Name     string
+	distance string
 }
 
-//Db on hard---->slow
-//important: conn db --->close
 func pg_conn(lat, lng float64) []Restaurant {
-	//cache redis ---->ram
-	//TODO
-	//hard
+
 	connStr := "user=postgres dbname=postgres password=246 sslmode=disable" //connection string
 	db, err := sql.Open("postgres", connStr)                                //app---->pg
 	if err != nil {
 		panic(err)
 	}
-
+	//query to find top 10 restaurants within a 1km radius of a specified geographical point, ordered based on their distances.
 	query := `
 	SELECT
 	name,
@@ -48,15 +41,14 @@ func pg_conn(lat, lng float64) []Restaurant {
 	)
 	ORDER BY distance
 	limit 10;
-
 	`
+	//executing the query with long and lat inputs
 	rows, err := db.Query(query, lng, lat)
 	if err != nil {
 		panic(err)
 	}
 	defer rows.Next()
-	//var name string
-	//var distance string
+	//Append each SQL row to a collection of restaurants.
 	var restaurants []Restaurant
 	for rows.Next() {
 		var rst Restaurant
@@ -69,19 +61,15 @@ func pg_conn(lat, lng float64) []Restaurant {
 	if err != nil {
 		panic(err)
 	}
-	return restaurants //string(jsonData)
+	return restaurants
 
 }
 
-//65535 ports per ip - 1024 reserved
 func pong(c *gin.Context) {
-	// data databse
-
-	time.Sleep(200 + time.Millisecond)
-	c.JSON(http.StatusOK, gin.H{
-		"id":   "1",
-		"name": "maryh",
-	})
+	//c.JSON(http.StatusOK, gin.H{
+	//	"ping": "pong",
+	//})
+	c.String(http.StatusOK, "pong")
 
 }
 func main() {
@@ -94,47 +82,29 @@ func main() {
 	})
 
 	r.GET("/ping", pong)
-	r.GET("/user/:id", func(c *gin.Context) { //rest api
-		id, err := strconv.ParseInt(c.Param("id"), 10, 64)
-		if err != nil {
-			panic(err)
-		}
-		// query
 
-		if id != 0 {
-			c.JSON(http.StatusOK, gin.H{
-				"id": id,
-				//"name": pg_conn(id),
-			})
-		} else {
-			c.JSON(http.StatusOK, gin.H{
-				"res": "Not found",
-			})
-		}
-
-	})
-	//lat=35.803900&long=51.420431
+	//Zafaraniyeh Office:   lat=35.803900&long=51.420431
 	// Query string parameters are parsed using the existing underlying request object.
-	// The request responds to a url matching:  /welcome?firstname=Jane&lastname=Doe
+	// The request responds to a url matching:  /http://localhost:8080/restaurants?lat=35.803900&long=51.420431
+
 	r.GET("/restaurants", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "index.html", nil)
-		lat, err1 := strconv.ParseFloat(c.Query("lat"), 64)
-		long, err2 := strconv.ParseFloat(c.Query("long"), 64) // shortcut for c.Request.URL.Query().Get("lastname")
-		fmt.Print(lat, long)
-		if err1 == nil || err2 == nil {
-			//c.JSON(http.StatusOK, gin.H{
-			//	"res": pg_conn(lat, long),
-			//})
-			restaurants := pg_conn(lat, long)
-			//c.JSON(http.StatusOK, restaurants)
-			c.HTML(http.StatusOK, "restaurants.html", restaurants)
-		} else {
-			c.JSON(http.StatusOK, gin.H{
-				"res": "lat or Long Not found",
-			})
-		}
 
-		//c.String(http.StatusOK, "Hello %s %s", firstname, lastname)
+		//converting string type to required float64 type
+		lat, err1 := strconv.ParseFloat(c.Query("lat"), 64)
+		long, err2 := strconv.ParseFloat(c.Query("long"), 64)
+
+		if err1 == nil || err2 == nil {
+
+			//get required data from postgres osm database
+			restaurants := pg_conn(lat, long)
+
+			//show the result with the help of restaurants.html template
+			c.HTML(http.StatusOK, "restaurants.html", restaurants)
+
+		} else {
+			c.String(http.StatusOK, "Please enter latitude and longitude.")
+		}
 	})
 
 	r.Run() // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
