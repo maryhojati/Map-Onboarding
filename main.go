@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -13,9 +14,15 @@ import (
 	_ "github.com/lib/pq" //import,but unuse
 )
 
+type Restaurant struct {
+	Name     string `json:"name"`
+	distance string `json:"distance"`
+	// Add more fields here as needed
+}
+
 //Db on hard---->slow
 //important: conn db --->close
-func pg_conn(lat, lng float64) (res []string) {
+func pg_conn(lat, lng float64) string {
 	//cache redis ---->ram
 	//TODO
 	//hard
@@ -28,7 +35,10 @@ func pg_conn(lat, lng float64) (res []string) {
 	query := `
 	SELECT
 	name,
-	ST_Distance(ST_Transform(way, 4326),ST_SetSRID(ST_MakePoint($1,$2), 4326) as distance
+	ST_Distance(
+        ST_Transform(way, 4326),
+        ST_SetSRID(ST_MakePoint($1,$2), 4326)
+    ) AS distance
     --,osm_id, amenity,    
 	FROM planet_osm_point
 	where amenity = 'restaurant' AND 
@@ -37,8 +47,7 @@ func pg_conn(lat, lng float64) (res []string) {
 		ST_SetSRID(ST_MakePoint($1,$2), 4326),
 		1000
 	)
-	ORDER BY  distance
-	)
+	ORDER BY distance
 	limit 10;
 
 	`
@@ -47,20 +56,21 @@ func pg_conn(lat, lng float64) (res []string) {
 		panic(err)
 	}
 	defer rows.Next()
-
+	//var name string
+	//var distance string
+	var restaurants []Restaurant
 	for rows.Next() {
-		var name string
-		err = rows.Scan(&name)
-		if err != nil {
+		var rst Restaurant
+		if err := rows.Scan(&rst.Name, &rst.distance); err != nil {
 			panic(err)
 		}
-		fmt.Println(name)
+		restaurants = append(restaurants, rst)
 	}
-	err = rows.Err()
+	jsonData, err := json.Marshal(restaurants)
 	if err != nil {
 		panic(err)
 	}
-	return "successful"
+	return string(jsonData)
 
 }
 
@@ -106,8 +116,10 @@ func main() {
 		fmt.Print(lat, long)
 		if err1 == nil || err2 == nil {
 			c.JSON(http.StatusOK, gin.H{
-				"restaurant name": pg_conn(lat, long),
+				"res": pg_conn(lat, long),
 			})
+			//restaurants := pg_conn(lat, long)
+			//c.JSON(http.StatusOK, restaurants)
 		} else {
 			c.JSON(http.StatusOK, gin.H{
 				"res": "lat or Long Not found",
