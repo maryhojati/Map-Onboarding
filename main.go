@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -15,14 +14,14 @@ import (
 )
 
 type Restaurant struct {
-	Name     string `json:"name"`
-	distance string `json:"distance"`
+	Name     string //`json:"name"`
+	distance string //`json:"distance"`
 	// Add more fields here as needed
 }
 
 //Db on hard---->slow
 //important: conn db --->close
-func pg_conn(lat, lng float64) string {
+func pg_conn(lat, lng float64) []Restaurant {
 	//cache redis ---->ram
 	//TODO
 	//hard
@@ -66,11 +65,11 @@ func pg_conn(lat, lng float64) string {
 		}
 		restaurants = append(restaurants, rst)
 	}
-	jsonData, err := json.Marshal(restaurants)
+	//jsonData, err := json.Marshal(restaurants)
 	if err != nil {
 		panic(err)
 	}
-	return string(jsonData)
+	return restaurants //string(jsonData)
 
 }
 
@@ -87,6 +86,13 @@ func pong(c *gin.Context) {
 }
 func main() {
 	r := gin.Default()
+
+	r.LoadHTMLGlob("templates/*")
+
+	r.GET("/", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "index.html", nil)
+	})
+
 	r.GET("/ping", pong)
 	r.GET("/user/:id", func(c *gin.Context) { //rest api
 		id, err := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -107,19 +113,21 @@ func main() {
 		}
 
 	})
-
+	//lat=35.803900&long=51.420431
 	// Query string parameters are parsed using the existing underlying request object.
 	// The request responds to a url matching:  /welcome?firstname=Jane&lastname=Doe
-	r.GET("/point", func(c *gin.Context) {
+	r.GET("/restaurants", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "index.html", nil)
 		lat, err1 := strconv.ParseFloat(c.Query("lat"), 64)
 		long, err2 := strconv.ParseFloat(c.Query("long"), 64) // shortcut for c.Request.URL.Query().Get("lastname")
 		fmt.Print(lat, long)
 		if err1 == nil || err2 == nil {
-			c.JSON(http.StatusOK, gin.H{
-				"res": pg_conn(lat, long),
-			})
-			//restaurants := pg_conn(lat, long)
+			//c.JSON(http.StatusOK, gin.H{
+			//	"res": pg_conn(lat, long),
+			//})
+			restaurants := pg_conn(lat, long)
 			//c.JSON(http.StatusOK, restaurants)
+			c.HTML(http.StatusOK, "restaurants.html", restaurants)
 		} else {
 			c.JSON(http.StatusOK, gin.H{
 				"res": "lat or Long Not found",

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restaurant List</title>
+    <style>
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            padding: 10px;
+            border-bottom: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+    <h1>Restaurant List</h1>
+    <ul>
+        {{range .}}
+            <li>{{.Name}}</li>
+        {{end}}
+    </ul>
+</body>
+</html>
