@@ -18,7 +18,7 @@ type Restaurant struct {
 
 func pg_conn(lat, lng float64) []Restaurant {
 
-	connStr := "user=postgres dbname=postgres password=246 sslmode=disable" //connection string
+	connStr := "user=postgres dbname=*** password=*** sslmode=disable" //connection string
 	db, err := sql.Open("postgres", connStr)                                //app---->pg
 	if err != nil {
 		panic(err)
